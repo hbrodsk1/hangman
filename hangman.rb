@@ -12,9 +12,12 @@ class Hangman
 	def initialize(name)
 		@name = Player.new(name)
 		@gallow = Gallow.new(0)
-		@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample
-		@blank_spaces = "_ " * @word_to_be_guessed.length
-		@previously_guessed_letters = []
+		
+		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
+		@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
+		@blank_spaces = "_ " * @word_to_be_guessed.size
+		@current_guess = ""
+		@incorrectly_guessed_letters = []
 		
 		create_blank_spaces
 	end
@@ -26,28 +29,53 @@ class Hangman
 
 	def introduction_to_game
 		puts "\n\nWelcome to hangman, #{@name}. Please guess a letter..."
+		print @word_to_be_guessed
 		user_letter
 	end
 
 	def user_letter
-		user_input = gets.chomp
+		@current_guess = gets.chomp
 
-		validate_input(user_input.downcase)
+		validate_input(@current_guess.downcase)
 	end
 
-	def validate_input(str)
+	def validate_input(letter)
 		valid_input = ("a".."z").to_a
 
-		if valid_input.include?(str)
-			next_method
+		if valid_input.include?(@current_guess.downcase)
+			check_for_user_letter_in_word(@current_guess.downcase)
 		else
-			reenter_input(str)
+			reenter_input(letter)
 		end
 	end
 
-	def reenter_input(str)
-		puts "\nSorry, #{str} is not a valid input. Please choose a letter from A-Z"
+	def reenter_input(letter)
+		puts "\nSorry, #{letter} is not a valid input. Please choose a letter from A-Z"
 
+		user_letter
+	end
+
+	def check_for_user_letter_in_word(letter)
+		if @word_to_be_guessed.include?(@current_guess.downcase)
+			replace_blank_with_correct_letter(@current_guess.downcase)
+		else
+			@incorrectly_guessed_letters << @current_guess.downcase
+			puts @incorrectly_guessed_letters.join(", ")
+
+			user_letter
+		end
+	end
+
+	def replace_blank_with_correct_letter(letter)
+		@blank_spaces = @word_to_be_guessed
+		@blank_spaces.each do |word_letter|
+			if @current_guess.downcase == word_letter
+				print @current_guess.downcase + " "
+			else
+				print "_ "
+			end
+		end
+		
 		user_letter
 	end
 end
