@@ -11,13 +11,15 @@ class Hangman
 
 	def initialize(name)
 		@name = Player.new(name)
-		@gallow = Gallow.new(0)
+		@turn_number = 0
+		@gallow = Gallow.new(@turn_number)
 		
 		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
 		@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
 		@blank_spaces = ["_ "] * @word_to_be_guessed.size
 		@current_guess = ""
 		@incorrectly_guessed_letters = []
+		@turns_left = 6
 		
 		create_blank_spaces
 	end
@@ -59,12 +61,7 @@ class Hangman
 		if @word_to_be_guessed.include?(@current_guess.downcase)
 			replace_blank_with_correct_letter(@current_guess.downcase)
 		else
-			@incorrectly_guessed_letters << @current_guess.downcase
-
-			puts "\n\nIncorrect Letters:"
-			puts @incorrectly_guessed_letters.join(", ")
-
-			user_letter
+			incorrect_guess
 		end
 	end
 
@@ -74,7 +71,24 @@ class Hangman
 				@blank_spaces[index] = @current_guess
 			end
 		end
-		print @blank_spaces.join(" ")
+		print "\n#{@blank_spaces.join(" ")}"
+		guess_again
+	end
+
+	def incorrect_guess
+		@incorrectly_guessed_letters << @current_guess.downcase
+		@turns_left -= 1
+		@turn_number += 1
+
+		puts @gallow.gallow_to_draw_on_turn(@turn_number)
+		guess_again
+	end
+
+	def guess_again
+		puts "\n\nIncorrect Letters:"
+		puts @incorrectly_guessed_letters.join(", ")
+
+		puts "\n\nPlease guess another letter"
 		user_letter
 	end
 end
@@ -83,7 +97,7 @@ class Gallow < Hangman
 
 	def initialize(turn)
 		@turn = turn
-		gallow_to_draw_on_turn(turn)
+		gallow_to_draw_on_turn(@turn)
 	end
 
 	def gallow_to_draw_on_turn(num)
