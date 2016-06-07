@@ -15,7 +15,7 @@ class Hangman
 		
 		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
 		@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
-		@blank_spaces = "_ " * @word_to_be_guessed.size
+		@blank_spaces = ["_ "] * @word_to_be_guessed.size
 		@current_guess = ""
 		@incorrectly_guessed_letters = []
 		
@@ -23,7 +23,7 @@ class Hangman
 	end
 
 	def create_blank_spaces
-		puts @blank_spaces
+		print @blank_spaces.join
 		introduction_to_game
 	end
 
@@ -60,6 +60,8 @@ class Hangman
 			replace_blank_with_correct_letter(@current_guess.downcase)
 		else
 			@incorrectly_guessed_letters << @current_guess.downcase
+
+			puts "\n\nIncorrect Letters:"
 			puts @incorrectly_guessed_letters.join(", ")
 
 			user_letter
@@ -67,15 +69,12 @@ class Hangman
 	end
 
 	def replace_blank_with_correct_letter(letter)
-		@blank_spaces = @word_to_be_guessed
-		@blank_spaces.each do |word_letter|
+		@word_to_be_guessed.each_with_index do |word_letter, index|
 			if @current_guess.downcase == word_letter
-				print @current_guess.downcase + " "
-			else
-				print "_ "
+				@blank_spaces[index] = @current_guess
 			end
 		end
-		
+		print @blank_spaces.join(" ")
 		user_letter
 	end
 end
