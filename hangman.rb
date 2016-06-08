@@ -16,8 +16,8 @@ class Hangman
 		@gallow = Gallow.new(@turn_number)
 		
 		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
-		@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
-		@blank_spaces = ["_ "] * @word_to_be_guessed.size
+		@word_to_be_guessed = ""
+		@blank_spaces = ""
 		@current_guess = ""
 		@incorrectly_guessed_letters = []
 		@correctly_guessed_letters = []
@@ -35,13 +35,14 @@ class Hangman
 	end
 
 	def create_blank_spaces
+		@blank_spaces = ["_ "] * @word_to_be_guessed.length
 		print @blank_spaces.join
 		introduction_to_game
 	end
 
 	def introduction_to_game
 		puts "\n\nWelcome to hangman, #{@name}. Please guess a letter..."
-		print @word_to_be_guessed
+
 		user_letter
 	end
 
@@ -100,9 +101,10 @@ class Hangman
 				@blank_spaces[index] = @current_guess
 			end
 		end
+
 		puts @gallow.gallow_to_draw_on_turn(@turn_number)
 		print "\n#{@blank_spaces.join(" ")}"
-		guess_again
+		win_game
 	end
 
 	def incorrect_guess
@@ -127,6 +129,17 @@ class Hangman
 
 		puts "\n\nPlease guess another letter"
 		user_letter
+	end
+
+	def win_game
+		if @blank_spaces.all? { |space| ("a".."z").to_a.include?(space) }
+			puts "\nYou Win!"
+			puts "\nWould you like to play again? (Y / N)"
+
+			play_again
+		else 
+			guess_again
+		end
 	end
 
 	def play_again
