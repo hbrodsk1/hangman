@@ -12,6 +12,7 @@ class Hangman
 	def initialize(name)
 		@name = Player.new(name)
 		@turn_number = 0
+		@turns_left = 6
 		@gallow = Gallow.new(@turn_number)
 		
 		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
@@ -20,8 +21,16 @@ class Hangman
 		@current_guess = ""
 		@incorrectly_guessed_letters = []
 		@correctly_guessed_letters = []
-		@turns_left = 6
-		
+				
+		ensure_correct_word_length
+	end
+
+	def ensure_correct_word_length
+		unless @word_to_be_guessed.length > 5 && @word_to_be_guessed.length < 12
+			@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
+			ensure_correct_word_length
+		end
+
 		create_blank_spaces
 	end
 
