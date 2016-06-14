@@ -1,3 +1,5 @@
+require "yaml"
+
 class Player
 
 	attr_reader :name
@@ -8,6 +10,7 @@ class Player
 end
 
 class Hangman
+	
 
 	def initialize(name)
 		@name = Player.new(name)
@@ -22,7 +25,30 @@ class Hangman
 		@incorrectly_guessed_letters = []
 		@correctly_guessed_letters = []
 				
-		ensure_correct_word_length
+		introduction_to_game
+	end
+
+	def introduction_to_game
+		puts "\n\nWelcome to hangman, " + @name.name + " Please type New to start a new game..."
+		puts "\nOr type load to load a game"
+
+		user_letter
+	end
+
+	def user_letter
+		@current_guess = gets.downcase.chomp
+
+		if @current_guess == "new"
+			ensure_correct_word_length
+		elsif @current_guess == "save"
+			save_game
+		elsif @current_guess == "load"
+			load_game.create_blank_spaces
+		elsif @correctly_guessed_letters.include?(@current_guess.downcase) || @incorrectly_guessed_letters.include?(@current_guess.downcase)
+			already_guessed_letter(@current_guess)
+		else
+			validate_input(@current_guess.downcase)
+		end
 	end
 
 	def ensure_correct_word_length
@@ -36,25 +62,13 @@ class Hangman
 
 	def create_blank_spaces
 		@blank_spaces = ["_ "] * @word_to_be_guessed.length
+		puts @gallow.gallow_to_draw_on_turn(@turn_number)
 		print @blank_spaces.join
-		introduction_to_game
-	end
-
-	def introduction_to_game
-		puts "\n\nWelcome to hangman, #{@name}. Please guess a letter..."
+		puts "\n\nPlease select a letter"
 
 		user_letter
 	end
 
-	def user_letter
-		@current_guess = gets.chomp
-
-		if @correctly_guessed_letters.include?(@current_guess.downcase) || @incorrectly_guessed_letters.include?(@current_guess.downcase)
-			already_guessed_letter(@current_guess)
-		else
-			validate_input(@current_guess.downcase)
-		end
-	end
 
 	def validate_input(letter)
 		valid_input = ("a".."z").to_a
@@ -126,6 +140,7 @@ class Hangman
 	def guess_again
 		puts "\n\nIncorrect Letters:"
 		puts @incorrectly_guessed_letters.join(", ")
+		puts "\nTo save your game, please type Save"
 
 		puts "\n\nPlease guess another letter"
 		user_letter
@@ -146,7 +161,7 @@ class Hangman
 		new_game = gets.chomp
 
 		if new_game.downcase == "y"
-			Hangman.new(@name)
+			Hangman.new(@name.name)
 		elsif new_game.downcase == "n"
 			exit
 		else
@@ -154,12 +169,37 @@ class Hangman
 			play_again
 		end
 	end
+
+	def save_game	
+  	File.open('Saved_game.yaml', 'w') do |file|
+    	file.puts YAML.dump(self)
+  	end
+
+		puts "\nYour game was saved successfully. Thank you!\n"
+		exit
+	end
+
+	def load_game
+		#content = File.open('Saved_game.yaml', 'r') { |file| file.read }
+  	load_data = YAML::load(File.open("Saved_game.yaml"))
+
+ 		load_data.welcome_back
+	end
+
+	def welcome_back
+		puts @gallow.gallow_to_draw_on_turn(@turn_number)
+		print "\n#{@blank_spaces.join(" ")}"
+		puts "\n\nIncorrect Letters:"
+		puts @incorrectly_guessed_letters.join(", ")
+
+		user_letter
+	end
 end
+
 
 class Gallow < Hangman
 
 	def initialize(turn)
-		@turn = turn
 		gallow_to_draw_on_turn(@turn)
 	end
 
