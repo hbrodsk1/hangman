@@ -1,0 +1,39 @@
+--- !ruby/object:Hangman
+name: !ruby/object:Player
+  name: Harry
+turn_number: 3
+turns_left: 3
+gallow: !ruby/object:Gallow {}
+word_to_be_guessed:
+- h
+- i
+- p
+- p
+- o
+- p
+- o
+- t
+- a
+- m
+- i
+blank_spaces:
+- '_ '
+- i
+- '_ '
+- '_ '
+- o
+- '_ '
+- o
+- '_ '
+- a
+- '_ '
+- i
+current_guess: save
+incorrectly_guessed_letters:
+- e
+- s
+- r
+correctly_guessed_letters:
+- o
+- i
+- a
