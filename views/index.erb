@@ -1,0 +1,38 @@
+<html>
+	<head></head>
+	<style type="text/css">
+		body {background-color: grey;
+			text-align: center;
+			margin-top: 15%
+		}
+
+		.hey { height: 10%;
+		}
+	</style>
+	<body>
+		<h1>Welcome To Hangman!</h1>
+		<p>
+			Your name for this game will be <strong> <%= name %> </strong>
+		</p>
+
+		<h2>
+			<%= blank_spaces %>
+		</h2>
+		<p>
+		You have <strong><%= turns_left %></strong> turns left
+		</p>
+		<h3>
+		Incorrect guesses: <%= incorrect_guesses.join(", ") %>
+	</h3>
+		
+
+
+		
+
+
+		<form>
+			<input type='text' name='guess' />
+			<input type='submit' value='Guess Letter!' />
+		</form>
+	</body>
+</html>

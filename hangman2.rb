@@ -1,281 +1,114 @@
+require 'sinatra'
+require 'sinatra/reloader' if development?
 require "yaml"
 
-class Player
+use Rack::Session::Pool, :expire_after => 2592000
 
-	attr_reader :name
+get "/" do
+	redirect to session[:game].nil? ? "/reset" : "/play"
+end
 
-	def initialize(name)
-		@name = name
-	end
+get "/reset" do
+	session[:game] = new_game
+	redirect to('/play')
+end
+
+get '/play' do
+	redirect to "/reset" unless session[:game]
+	
+	session[:guess] = params['guess']
+	session[:game].guess_letter(session[:guess])
+	name = session[:game].name
+	word = session[:game].word
+	blank_spaces = session[:game].blank_spaces
+	turns_left = session[:game].guesses
+	incorrect_guesses = session[:game].incorrect_guesses
+	redirect to "/win" if session[:game].win?
+	redirect to "/game_over" if session[:game].game_over?
+	erb :index, :locals => { word: word, blank_spaces: blank_spaces, turns_left: turns_left,
+	 incorrect_guesses: incorrect_guesses, name: name }
+end
+
+get '/win' do
+	blank_spaces = session[:game].blank_spaces
+	session[:new_game] = params['new_game']
+	redirect to "/reset" unless session[:new_game].nil?
+	erb :win, :locals => { blank_spaces: blank_spaces }
+end
+
+get '/game_over' do
+	saved_word = session[:game].saved_word
+	session[:new_game] = params['new_game']
+	redirect to "/reset" unless session[:new_game].nil?
+	erb :game_over, :locals => { saved_word: saved_word }
+end
+
+def new_game
+	Hangman.new
 end
 
 class Hangman
-	
+	attr_reader :word, :saved_word, :name, :guesses, :blank_spaces, :guessed_letters, :incorrect_guesses
 
-	def initialize(name)
-		@name = Player.new(name)
-		@turn_number = 0
-		@turns_left = 6
-		@gallow = Gallow.new(@turn_number)
-		
-		#chooses random word from file. Use #slice to get rid of /r and /n at end of array
-		@word_to_be_guessed = ""
-		@blank_spaces = ""
-		@current_guess = ""
-		@incorrectly_guessed_letters = []
-		@correctly_guessed_letters = []
-				
-		introduction_to_game
+	def initialize(guesses = 6, min = 5, max = 12)
+		@word = Dictionary.new.dictionary
+		@saved_word = @word.join
+		@name = ["Skeeter", "Smoochie", "Fanny", "Durma", "Norris", "Pinchy", "Dong"].sample
+		@guesses = guesses
+		@blank_spaces = ["_ "].join * @word.length
+		@guessed_letters = []
+		@incorrect_guesses = []
 	end
 
-	def introduction_to_game
-		puts "\n\nWelcome to hangman, " + @name.name + " Please type New to start a new game..."
-		puts "\nOr type load to load a game"
-
-		user_letter
-	end
-
-	def user_letter
-		@current_guess = gets.downcase.chomp
-
-		if @current_guess == "new"
-			ensure_correct_word_length
-		elsif @current_guess == "save"
-			save_game
-		elsif @current_guess == "load"
-			load_game.create_blank_spaces
-		elsif @correctly_guessed_letters.include?(@current_guess.downcase) || @incorrectly_guessed_letters.include?(@current_guess.downcase)
-			already_guessed_letter(@current_guess)
+	def guess_letter(guess)
+		if guess && guess.length == 1 && guess.between?('a','z') && !@guessed_letters.include?(guess)
+			process_guess(guess)
+			@guessed_letters << guess
 		else
-			validate_input(@current_guess.downcase)
+
 		end
 	end
 
-	def ensure_correct_word_length
-		unless @word_to_be_guessed.length > 5 && @word_to_be_guessed.length < 12
-			@word_to_be_guessed = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
-			ensure_correct_word_length
+	def process_guess(guess)
+		unless @word.include?(guess)
+			@incorrect_guesses << guess
+			@guesses -= 1
 		end
 
-		create_blank_spaces
-	end
-
-	def create_blank_spaces
-		@blank_spaces = ["_ "] * @word_to_be_guessed.length
-		puts @gallow.gallow_to_draw_on_turn(@turn_number)
-		print @blank_spaces.join
-		puts "\n\nPlease select a letter"
-
-		user_letter
-	end
-
-
-	def validate_input(letter)
-		valid_input = ("a".."z").to_a
-
-		if valid_input.include?(@current_guess.downcase)
-			check_for_user_letter_in_word(@current_guess.downcase)
-		else
-			reenter_input(letter)
+		while @word.include?(guess)
+			@blank_spaces[@word.index(guess) * 2] = guess
+			@word[@word.index(guess)] = ""
 		end
 	end
 
-	def already_guessed_letter(letter)
-		puts "\nYou have already guessed #{letter}. Please choose another letter"
-		puts @gallow.gallow_to_draw_on_turn(@turn_number)
-		print "\n#{@blank_spaces.join(" ")}"
-		puts "\n\nIncorrect Letters:"
-		puts @incorrectly_guessed_letters.join(", ")
-
-		user_letter
+	def game_over?
+		game_over = false
+		game_over = true if(!@blank_spaces.include?("_") || @guesses <= 0)
+		game_over
 	end
 
-	def reenter_input(letter)
-		puts "\nSorry, #{letter} is not a valid input. Please choose a letter from A-Z"
-		puts @gallow.gallow_to_draw_on_turn(@turn_number)
-		print "\n#{@blank_spaces.join(" ")}"
-		puts "\n\nIncorrect Letters:"
-		puts @incorrectly_guessed_letters.join(", ")
-
-		user_letter
+	def win?
+		win = false
+		win = true if (game_over? && @guesses > 0)
+		win
 	end
 
-	def check_for_user_letter_in_word(letter)
-		if @word_to_be_guessed.include?(@current_guess.downcase)
-			@correctly_guessed_letters << @current_guess.downcase
-			replace_blank_with_correct_letter(@current_guess.downcase)
-		else
-			incorrect_guess
-		end
-	end
-
-	def replace_blank_with_correct_letter(letter)
-		@word_to_be_guessed.each_with_index do |word_letter, index|
-			if @current_guess.downcase == word_letter
-				@blank_spaces[index] = @current_guess
-			end
-		end
-
-		puts @gallow.gallow_to_draw_on_turn(@turn_number)
-		print "\n#{@blank_spaces.join(" ")}"
-		win_game
-	end
-
-	def incorrect_guess
-		@incorrectly_guessed_letters << @current_guess.downcase
-		@turns_left -= 1
-		@turn_number += 1
-
-		if @turns_left == 0
-			puts @gallow.gallow_to_draw_on_turn(@turn_number)
-			puts "\n\nSorry you are all out of guesses. Would you like to play again? (Y / N)"
-			play_again
-		else
-			puts @gallow.gallow_to_draw_on_turn(@turn_number)
-			print "\n#{@blank_spaces.join(" ")}"
-			guess_again
-		end
-	end
-
-	def guess_again
-		puts "\n\nIncorrect Letters:"
-		puts @incorrectly_guessed_letters.join(", ")
-		puts "\nTo save your game, please type Save"
-
-		puts "\n\nPlease guess another letter"
-		user_letter
-	end
-
-	def win_game
-		if @blank_spaces.all? { |space| ("a".."z").to_a.include?(space) }
-			puts "\nYou Win!"
-			puts "\nWould you like to play again? (Y / N)"
-
-			play_again
-		else 
-			guess_again
-		end
-	end
-
-	def play_again
-		new_game = gets.chomp
-
-		if new_game.downcase == "y"
-			Hangman.new(@name.name)
-		elsif new_game.downcase == "n"
-			exit
-		else
-			puts "Please enter Y or N"
-			play_again
-		end
-	end
-
-	def save_game	
-  	File.open('Saved_game.yaml', 'w') do |file|
-    	file.puts YAML.dump(self)
-  	end
-
-		puts "\nYour game was saved successfully. Thank you!\n"
-		exit
-	end
-
-	def load_game
-		#content = File.open('Saved_game.yaml', 'r') { |file| file.read }
-  	load_data = YAML::load(File.open("Saved_game.yaml"))
-
- 		load_data.welcome_back
-	end
-
-	def welcome_back
-		puts @gallow.gallow_to_draw_on_turn(@turn_number)
-		print "\n#{@blank_spaces.join(" ")}"
-		puts "\n\nIncorrect Letters:"
-		puts @incorrectly_guessed_letters.join(", ")
-
-		user_letter
-	end
 end
 
+class Dictionary
+	attr_reader :dictionary
 
-class Gallow < Hangman
-
-	def initialize(turn)
-		gallow_to_draw_on_turn(@turn)
+	def initialize
+		@dictionary = ""
+		choose_word
 	end
 
-	def gallow_to_draw_on_turn(num)
-		number = num
-		case number.to_s
-		when "0"
-			puts %{_________
-    |    |
-    |         
-    |        
-    |        
-    |
-    |
-  }
-  	when "1"
-  		puts %{_________
-    |    |
-    |    0
-    |        
-    |        
-    |
-    |
-  }
-  	when "2"
-  		puts %{_________
-    |    |
-    |    0
-    |    |
-    |        
-    |
-    |
-	}
-		when "3"
-			puts %{_________
-    |    |
-    |    0
-    |   /
-    |        
-    |
-    |
-	}
-		when "4"
-			puts %{_________
-    |    |
-    |    0
-    |   /|\\
-    |        
-    |
-    |
-	}
-		when "5"
-			puts %{_________
-    |    |
-    |    0
-    |   /|\\
-    |   /
-    |
-    |
-	}
-		when "6"
-			puts %{_________
-    |    |
-    |    0
-    |   /|\\
-    |   / \\
-    |
-    |
-	}
-  		end
+	def choose_word(min = 5, max = 12)
+		unless @dictionary.length.between?(min, max)
+			@dictionary = File.readlines("hangman_word_choices.txt").sample.downcase.split("").slice(0..-3)
+			choose_word
+		end
+
+		@dictionary
 	end
 end
-
-
-Hangman.new("Harry")
-
-
-
- 
