@@ -18,13 +18,15 @@ get '/play' do
 	
 	session[:guess] = params['guess']
 	session[:game].guess_letter(session[:guess])
+	name = session[:game].name
 	word = session[:game].word
 	blank_spaces = session[:game].blank_spaces
 	turns_left = session[:game].guesses
 	incorrect_guesses = session[:game].incorrect_guesses
 	redirect to "/win" if session[:game].win?
 	redirect to "/game_over" if session[:game].game_over?
-	erb :index, :locals => { word: word, blank_spaces: blank_spaces, turns_left: turns_left, incorrect_guesses: incorrect_guesses }
+	erb :index, :locals => { word: word, blank_spaces: blank_spaces, turns_left: turns_left,
+	 incorrect_guesses: incorrect_guesses, name: name }
 end
 
 get '/win' do
@@ -46,11 +48,12 @@ def new_game
 end
 
 class Hangman
-	attr_reader :word, :saved_word, :guesses, :blank_spaces, :guessed_letters, :incorrect_guesses
+	attr_reader :word, :saved_word, :name, :guesses, :blank_spaces, :guessed_letters, :incorrect_guesses
 
 	def initialize(guesses = 6, min = 5, max = 12)
 		@word = Dictionary.new.dictionary
 		@saved_word = @word.join
+		@name = ["Skeeter", "Smoochie", "Fanny", "Durma", "Norris", "Pinchy", "Dong"].sample
 		@guesses = guesses
 		@blank_spaces = ["_ "].join * @word.length
 		@guessed_letters = []
